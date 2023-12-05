@@ -2,6 +2,12 @@
 name = "package-family-name"
 version = "1.0.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+categories = ["no-std"]
+description = "Library for calculating MSIX Package Family Name values."
+documentation = "https://docs.rs/package-family-name"
+readme = "README.md"
+repository = "https://github.com/russellbanks/package-family-name"
 
 [dependencies]
 sha2 = { version = "0.10", default-features = false }
