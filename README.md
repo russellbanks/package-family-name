@@ -38,9 +38,9 @@ In short, a package family name is made up of two parts:
 
 These steps are then taken:
 
-1. Calculate the SHA256 hash of the identity publisher
-2. Take the first 8 bytes of the hash
-3. Left shift all bits
+1. UTF-16 encode the identity publisher
+2. Calculate a SHA256 hash of the encoded publisher
+3. Take the first 8 bytes of the hash
 4. Encode the result with [Douglas Crockford Base32](http://www.crockford.com/base32.html)
 5. Join the identity name and the encoded value with an underscore (`AppName_zj75k085cmj1a`)
 

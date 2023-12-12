@@ -1,6 +1,6 @@
 [package]
 name = "package-family-name"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 categories = ["no-std"]
@@ -10,4 +10,5 @@ readme = "README.md"
 repository = "https://github.com/russellbanks/package-family-name"
 
 [dependencies]
+fast32 = "1"
 sha2 = { version = "0.10", default-features = false }
