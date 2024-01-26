@@ -11,10 +11,7 @@ pub fn get_package_family_name(identity_name: &str, identity_publisher: &str) ->
     let publisher_sha_256 = identity_publisher
         .encode_utf16()
         .flat_map(u16::to_le_bytes)
-        .fold(Sha256::new(), |mut buf, byte| {
-            buf.update([byte]);
-            buf
-        })
+        .fold(Sha256::new(), |buf, byte| buf.chain_update([byte]))
         .finalize();
 
     format!(
