@@ -11,4 +11,4 @@ repository = "https://github.com/russellbanks/package-family-name"
 
 [dependencies]
 fast32 = "1"
-sha2 = { version = "0.10", default-features = false }
+sha2 = { version = "0.10.8", default-features = false }
