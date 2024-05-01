@@ -10,5 +10,5 @@ readme = "README.md"
 repository = "https://github.com/russellbanks/package-family-name"
 
 [dependencies]
-fast32 = "1"
+fast32 = "1.0.2"
 sha2 = { version = "0.10", default-features = false }
