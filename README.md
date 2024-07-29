@@ -1,6 +1,6 @@
 # Package Family Name
 
-[![Test Status](https://github.com/russellbanks/package-family-name/workflows/Tests/badge.svg?event=push)](https://github.com/russellbanks/package-family-name/actions)
+[![Test Status](https://github.com/russellbanks/package-family-name/workflows/Tests/badge.svg)](https://github.com/russellbanks/package-family-name/actions)
 
 A Rust library for calculating MSIX Package Family Name values.
 
@@ -19,14 +19,11 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-package-family-name = "1.0"
+package-family-name = "2"
 ```
 
-This library currently only has one function, `get_package_family_name`, that takes in an identity name and an identity
-publisher:
-
 ```rust
-let package_family_name = get_package_family_name("AppName", "Publisher Software"); // AppName_zj75k085cmj1a
+let package_family_name = PackageFamilyName::new("AppName", "Publisher Software"); // AppName_zj75k085cmj1a
 ```
 
 ## How a package family name is calculated
@@ -52,7 +49,8 @@ manifest.
 
 ## Acknowledgements
 
-@marcinotorowski has produced a step by step explanation of how to calculate the hash part of the package family name.
+[@marcinotorowski](https://github.com/marcinotorowski) has produced a step by step explanation of how to calculate the
+hash part of the package family name.
 This post can be found
 [here](https://marcinotorowski.com/2021/12/19/calculating-hash-part-of-msix-package-family-name).
 
