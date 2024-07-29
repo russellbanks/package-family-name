@@ -8,10 +8,10 @@ use fast32::base32::CROCKFORD_LOWER;
 use sha2::{Digest, Sha256};
 
 pub fn get_package_family_name(identity_name: &str, identity_publisher: &str) -> String {
-    format!("{identity_name}_{}", get_publisher_id(identity_publisher))
+    format!("{identity_name}_{}", get_publisher_hash(identity_publisher))
 }
 
-pub fn get_publisher_id(identity_publisher: &str) -> String {
+pub fn get_publisher_hash(identity_publisher: &str) -> String {
     let publisher_sha_256 = identity_publisher
         .encode_utf16()
         .flat_map(u16::to_le_bytes)
@@ -23,7 +23,7 @@ pub fn get_publisher_id(identity_publisher: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::{get_package_family_name, get_publisher_id};
+    use crate::{get_package_family_name, get_publisher_hash};
 
     #[test]
     fn test_package_family_name() {
@@ -34,7 +34,7 @@ mod tests {
     }
 
     #[test]
-    fn test_package_family_hash() {
-        assert_eq!(get_publisher_id("Publisher Software"), "zj75k085cmj1a");
+    fn test_publisher_hash() {
+        assert_eq!(get_publisher_hash("Publisher Software"), "zj75k085cmj1a");
     }
 }
