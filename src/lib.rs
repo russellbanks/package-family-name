@@ -23,12 +23,6 @@ pub struct PackageFamilyName {
     publisher_id: PublisherId,
 }
 
-impl fmt::Display for PackageFamilyName {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}_{}", self.identity_name, self.publisher_id)
-    }
-}
-
 impl PackageFamilyName {
     pub fn new(identity_name: &str, identity_publisher: &str) -> Self {
         PackageFamilyName {
@@ -38,15 +32,22 @@ impl PackageFamilyName {
     }
 
     pub fn get_id(identity_publisher: &str) -> PublisherId {
+        const HASH_TRUNCATION_LENGTH: usize = 8;
+
         let publisher_sha_256 = identity_publisher
             .encode_utf16()
-            .flat_map(u16::to_le_bytes)
-            .fold(Sha256::new(), |buf, byte| buf.chain_update([byte]))
+            .fold(Sha256::new(), |hasher, char| hasher.chain_update(char.to_le_bytes()))
             .finalize();
 
-        let crockford_encoded = CROCKFORD_LOWER.encode(&publisher_sha_256[..8]);
+        let crockford_encoded = CROCKFORD_LOWER.encode(&publisher_sha_256[..HASH_TRUNCATION_LENGTH]);
 
         PublisherId(heapless::String::from_str(&crockford_encoded).unwrap())
+    }
+}
+
+impl fmt::Display for PackageFamilyName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}_{}", self.identity_name, self.publisher_id)
     }
 }
 
@@ -61,6 +62,7 @@ mod tests {
         let package_family_name = PackageFamilyName::new("AppName", "Publisher Software");
         assert_eq!(package_family_name.to_string(), "AppName_zj75k085cmj1a");
     }
+
     #[test]
     fn test_publisher_id() {
         let publisher_id = PackageFamilyName::get_id("Publisher Software");
@@ -71,6 +73,6 @@ mod tests {
     fn test_different_publishers() {
         let publisher_id1 = PackageFamilyName::get_id("Publisher Software");
         let publisher_id2 = PackageFamilyName::get_id("Another Publisher");
-        assert_ne!(publisher_id1.to_string(), publisher_id2.to_string());
+        assert_ne!(publisher_id1, publisher_id2);
     }
 }

@@ -5,7 +5,7 @@ use alloc::string::ToString;
 use core::str::FromStr;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-impl<'identity> Serialize for PackageFamilyName {
+impl Serialize for PackageFamilyName {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,

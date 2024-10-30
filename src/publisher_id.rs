@@ -21,7 +21,7 @@ impl FromStr for PublisherId {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.len() != PUBLISHER_ID_LENGTH {
-            return Err("expected publisher id length of 13");
+            return Err("Expected Publisher ID length of 13");
         }
         Ok(PublisherId(heapless::String::from_str(s).unwrap()))
     }
