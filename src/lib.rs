@@ -45,7 +45,8 @@ impl PackageFamilyName {
         let truncated_hash = &publisher_sha_256[..HASH_TRUNCATION_LENGTH];
         let crockford_encoded = CROCKFORD_LOWER.encode(truncated_hash);
 
-        PublisherId(crockford_encoded.parse().unwrap())
+        // An 8-byte array encoded with crockford base32 always has an expected length of 13
+        crockford_encoded.parse().unwrap()
     }
 }
 

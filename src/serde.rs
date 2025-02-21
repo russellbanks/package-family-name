@@ -2,7 +2,6 @@ use crate::PackageFamilyName;
 use crate::publisher_id::PublisherId;
 use alloc::borrow::ToOwned;
 use alloc::string::ToString;
-use core::str::FromStr;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 impl Serialize for PackageFamilyName {
@@ -26,7 +25,7 @@ impl<'de> Deserialize<'de> for PackageFamilyName {
                 .ok_or(serde::de::Error::custom(
                     "Invalid format for PackageFamilyName",
                 ))?;
-        let publisher_id = PublisherId::from_str(identity_id).map_err(serde::de::Error::custom)?;
+        let publisher_id = identity_id.parse().map_err(serde::de::Error::custom)?;
         Ok(PackageFamilyName {
             identity_name: identity_name.to_owned(),
             publisher_id,
@@ -49,6 +48,6 @@ impl<'de> Deserialize<'de> for PublisherId {
         D: Deserializer<'de>,
     {
         let deserialized_id = <&str>::deserialize(deserializer)?;
-        PublisherId::from_str(deserialized_id).map_err(serde::de::Error::custom)
+        deserialized_id.parse().map_err(serde::de::Error::custom)
     }
 }
