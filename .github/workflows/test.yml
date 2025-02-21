@@ -1,8 +1,6 @@
 name: Tests
 
-on:
-  push:
-  pull_request:
+on: [ push, pull_request ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -12,7 +10,7 @@ jobs:
     name: Rust project - latest
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -22,8 +20,8 @@ jobs:
       - name: Install Rust
         uses: moonrepo/setup-rust@v1
 
-      - name: Build
-        run: cargo build
+      - name: Check
+        run: cargo check --all-features
 
       - name: Run tests
-        run: cargo test
+        run: cargo test --all-features
