@@ -5,7 +5,6 @@ extern crate alloc;
 use alloc::borrow::ToOwned;
 use alloc::string::String;
 use core::fmt;
-use core::str::FromStr;
 
 use fast32::base32::CROCKFORD_LOWER;
 use sha2::{Digest, Sha256};
@@ -24,24 +23,29 @@ pub struct PackageFamilyName {
 }
 
 impl PackageFamilyName {
+    #[must_use]
     pub fn new(identity_name: &str, identity_publisher: &str) -> Self {
-        PackageFamilyName {
+        Self {
             identity_name: identity_name.to_owned(),
             publisher_id: Self::get_id(identity_publisher),
         }
     }
 
+    #[must_use]
     pub fn get_id(identity_publisher: &str) -> PublisherId {
         const HASH_TRUNCATION_LENGTH: usize = 8;
 
         let publisher_sha_256 = identity_publisher
             .encode_utf16()
-            .fold(Sha256::new(), |hasher, char| hasher.chain_update(char.to_le_bytes()))
+            .fold(Sha256::new(), |hasher, char| {
+                hasher.chain_update(char.to_le_bytes())
+            })
             .finalize();
 
-        let crockford_encoded = CROCKFORD_LOWER.encode(&publisher_sha_256[..HASH_TRUNCATION_LENGTH]);
+        let truncated_hash = &publisher_sha_256[..HASH_TRUNCATION_LENGTH];
+        let crockford_encoded = CROCKFORD_LOWER.encode(truncated_hash);
 
-        PublisherId(heapless::String::from_str(&crockford_encoded).unwrap())
+        PublisherId(crockford_encoded.parse().unwrap())
     }
 }
 

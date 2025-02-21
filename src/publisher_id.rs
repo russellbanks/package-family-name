@@ -23,7 +23,7 @@ impl FromStr for PublisherId {
         if s.len() != PUBLISHER_ID_LENGTH {
             return Err("Expected Publisher ID length of 13");
         }
-        Ok(PublisherId(heapless::String::from_str(s).unwrap()))
+        Ok(Self(s.parse().unwrap()))
     }
 }
 

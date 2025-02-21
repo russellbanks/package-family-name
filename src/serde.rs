@@ -1,5 +1,5 @@
-use crate::publisher_id::PublisherId;
 use crate::PackageFamilyName;
+use crate::publisher_id::PublisherId;
 use alloc::borrow::ToOwned;
 use alloc::string::ToString;
 use core::str::FromStr;
