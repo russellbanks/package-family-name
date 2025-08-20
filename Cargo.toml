@@ -12,7 +12,7 @@ repository = "https://github.com/russellbanks/package-family-name"
 
 [dependencies]
 fast32 = { version = "1", default-features = false }
-heapless = { version = "0.8", default-features = false }
+heapless = { version = "0.9", default-features = false }
 serde = { version = "1", default-features = false, optional = true }
 sha2 = { version = "0.10", default-features = false }
 thiserror = { version = "2", default-features = false }
