@@ -21,4 +21,4 @@ thiserror = { version = "2", default-features = false }
 serde = ["dep:serde"]
 
 [dev-dependencies]
-foldhash = { version = "0.1", default-features = false }
+foldhash = { version = "0.2", default-features = false }
