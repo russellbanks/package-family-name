@@ -29,3 +29,23 @@ jobs:
 
       - name: Publish dry run
         run: cargo publish --dry-run
+
+  msrv:
+    name: MSRV
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install cargo-msrv
+        uses: moonrepo/setup-rust@v1
+        with:
+          bins: cargo-msrv
+
+      - name: Verify MSRV
+        id: verify
+        run: cargo msrv verify
+
+      - name: Find actual MSRV
+        if: ${{ failure() && steps.verify.conclusion == 'failure' }}
+        run: cargo msrv find
