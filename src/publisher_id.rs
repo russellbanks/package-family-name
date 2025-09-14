@@ -41,7 +41,7 @@ impl FromStr for PublisherId {
         }
 
         Ok(Self(
-            s.parse().map_err(|()| PublisherIdError::InvalidLength)?,
+            s.parse().map_err(|_| PublisherIdError::InvalidLength)?,
         ))
     }
 }
