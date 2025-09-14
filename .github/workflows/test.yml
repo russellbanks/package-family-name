@@ -8,17 +8,20 @@ env:
 jobs:
   build_and_test:
     name: Rust project - latest
+    runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-latest, macos-latest ]
-    runs-on: ${{ matrix.os }}
+        channel: [ stable, beta, nightly ]
 
     steps:
       - name: Clone repository
         uses: actions/checkout@v5
 
-      - name: Install Rust
+      - name: Install Rust ${{ matrix.channel }}
         uses: moonrepo/setup-rust@v1
+        with:
+          channel: ${{ matrix.channel }}
 
       - name: Check
         run: cargo check --all-features
