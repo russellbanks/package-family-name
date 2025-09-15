@@ -62,82 +62,298 @@ This post can be found
 
 extern crate alloc;
 
-use alloc::borrow::ToOwned;
-use alloc::string::String;
-use core::fmt;
-
-use fast32::base32::CROCKFORD_LOWER;
-use sha2::{Digest, Sha256};
-
-use crate::publisher_id::PublisherId;
-
 mod publisher_id;
+
+use alloc::borrow::{Cow, ToOwned};
+use core::{
+    cmp::Ordering,
+    fmt,
+    hash::{Hash, Hasher},
+    str::FromStr,
+};
+
+pub use publisher_id::{PublisherId, PublisherIdError};
+use thiserror::Error;
 
 #[cfg(feature = "serde")]
 mod serde;
 
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default)]
-pub struct PackageFamilyName {
-    identity_name: String,
+/// A [Package Family Name] is an opaque string derived from only two parts of a package identity -
+/// name and publisher.
+///
+/// `<Name>_<PublisherId>`
+///
+/// For example, the Package Family Name of the Windows Photos app is
+/// `Microsoft.Windows.Photos_8wekyb3d8bbwe`, where `Microsoft.Windows.Photos` is the name and
+/// `8wekyb3d8bbwe` is the publisher ID for Microsoft.
+///
+/// Package Family Name is often referred to as a 'version-less Package Full Name'.
+///
+/// [Package Family Name]: https://learn.microsoft.com/en-us/windows/apps/desktop/modernize/package-identity-overview#package-family-name
+#[derive(Clone, Debug, Default, Eq)]
+pub struct PackageFamilyName<'ident> {
+    package_name: Cow<'ident, str>,
     publisher_id: PublisherId,
 }
 
-impl PackageFamilyName {
+impl<'ident> PackageFamilyName<'ident> {
+    /// Creates a new Package Family Name from a package name and an identity publisher.
+    ///
+    /// This is equivalent to the Windows function [`PackageNameAndPublisherIdFromFamilyName`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use package_family_name::PackageFamilyName;
+    /// let package_family_name = PackageFamilyName::new(
+    ///     "Microsoft.PowerShell",
+    ///     "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"
+    /// );
+    ///
+    /// assert_eq!(package_family_name.to_string(), "Microsoft.PowerShell_8wekyb3d8bbwe");
+    /// ```
+    ///
+    /// [`PackageNameAndPublisherIdFromFamilyName`]: https://learn.microsoft.com/en-us/windows/win32/api/appmodel/nf-appmodel-packagenameandpublisheridfromfamilyname
     #[must_use]
-    pub fn new(identity_name: &str, identity_publisher: &str) -> Self {
+    pub fn new<T, S>(package_name: T, identity_publisher: S) -> Self
+    where
+        T: Into<Cow<'ident, str>>,
+        S: AsRef<str>,
+    {
         Self {
-            identity_name: identity_name.to_owned(),
-            publisher_id: Self::get_id(identity_publisher),
+            package_name: package_name.into(),
+            publisher_id: PublisherId::new(identity_publisher),
         }
     }
 
+    /// Returns the package name as a string slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use package_family_name::PackageFamilyName;
+    /// let package_family_name = PackageFamilyName::new(
+    ///     "Microsoft.PowerShell",
+    ///     "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"
+    /// );
+    ///
+    /// assert_eq!(package_family_name.package_name(), "Microsoft.PowerShell");
+    /// ```
     #[must_use]
-    pub fn get_id(identity_publisher: &str) -> PublisherId {
-        const HASH_TRUNCATION_LENGTH: usize = 8;
+    #[inline]
+    pub fn package_name(&self) -> &str {
+        &self.package_name
+    }
 
-        let publisher_sha_256 = identity_publisher
-            .encode_utf16()
-            .fold(Sha256::new(), |hasher, char| {
-                hasher.chain_update(char.to_le_bytes())
-            })
-            .finalize();
-
-        let truncated_hash = &publisher_sha_256[..HASH_TRUNCATION_LENGTH];
-        let crockford_encoded = CROCKFORD_LOWER.encode(truncated_hash);
-
-        // An 8-byte array encoded with crockford base32 always has an expected length of 13
-        crockford_encoded.parse().unwrap()
+    /// Returns a reference to the [Publisher Id].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use package_family_name::PackageFamilyName;
+    /// let package_family_name = PackageFamilyName::new(
+    ///     "Microsoft.PowerShell",
+    ///     "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"
+    /// );
+    ///
+    /// assert_eq!(package_family_name.publisher_id().as_str(), "8wekyb3d8bbwe");
+    /// ```
+    ///
+    /// [Publisher Id]: PublisherId
+    #[must_use]
+    #[inline]
+    pub const fn publisher_id(&self) -> &PublisherId {
+        &self.publisher_id
     }
 }
 
-impl fmt::Display for PackageFamilyName {
+impl fmt::Display for PackageFamilyName<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}_{}", self.identity_name, self.publisher_id)
+        write!(f, "{}_{}", self.package_name, self.publisher_id)
+    }
+}
+
+impl PartialEq for PackageFamilyName<'_> {
+    /// Tests for `self` and `other` values to be equal, and is used by `==`.
+    ///
+    /// Package Family Name is compared case-insensitively.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use package_family_name::PackageFamilyName;
+    /// let pfn_1 = PackageFamilyName::new("PowerShell", "CN=, O=, L=, S=, C=");
+    /// let pfn_2 = PackageFamilyName::new("powershell", "CN=, O=, L=, S=, C=");
+    ///
+    /// assert_eq!(pfn_1, pfn_2);
+    /// ```
+    fn eq(&self, other: &Self) -> bool {
+        self.package_name()
+            .eq_ignore_ascii_case(other.package_name())
+            && self.publisher_id().eq(other.publisher_id())
+    }
+}
+
+impl PartialOrd for PackageFamilyName<'_> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for PackageFamilyName<'_> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.package_name()
+            .as_bytes()
+            .iter()
+            .map(u8::to_ascii_lowercase)
+            .cmp(
+                other
+                    .package_name()
+                    .as_bytes()
+                    .iter()
+                    .map(u8::to_ascii_lowercase),
+            )
+            .then_with(|| self.publisher_id().cmp(other.publisher_id()))
+    }
+}
+
+impl Hash for PackageFamilyName<'_> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for byte in self.package_name().as_bytes() {
+            state.write_u8(byte.to_ascii_lowercase());
+        }
+        state.write_u8(b'_');
+        self.publisher_id().hash(state);
+    }
+}
+
+#[derive(Error, Debug, Eq, PartialEq)]
+pub enum PackageFamilyNameError {
+    #[error(
+        "Package Family Name must have an underscore (`_`) between the package name and Publisher Id"
+    )]
+    NoUnderscore,
+    #[error(transparent)]
+    PublisherId(#[from] PublisherIdError),
+}
+
+impl FromStr for PackageFamilyName<'_> {
+    type Err = PackageFamilyNameError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (package_name, publisher_id) = s.split_once('_').ok_or(Self::Err::NoUnderscore)?;
+
+        Ok(Self {
+            package_name: package_name.to_owned().into(),
+            publisher_id: publisher_id.parse()?,
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use alloc::string::ToString;
+    use core::{
+        cmp::Ordering,
+        hash::{BuildHasher, Hash, Hasher},
+    };
 
-    use crate::PackageFamilyName;
+    use super::PackageFamilyName;
 
     #[test]
-    fn test_package_family_name() {
-        let package_family_name = PackageFamilyName::new("AppName", "Publisher Software");
-        assert_eq!(package_family_name.to_string(), "AppName_zj75k085cmj1a");
+    fn microsoft_windows_photos() {
+        let package_family_name = PackageFamilyName::new(
+            "Microsoft.Windows.Photos",
+            "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+        );
+
+        assert_eq!(
+            package_family_name.to_string(),
+            "Microsoft.Windows.Photos_8wekyb3d8bbwe"
+        );
     }
 
     #[test]
-    fn test_publisher_id() {
-        let publisher_id = PackageFamilyName::get_id("Publisher Software");
-        assert_eq!(publisher_id.to_string(), "zj75k085cmj1a");
+    fn hydraulic_conveyor_15() {
+        let package_family_name = PackageFamilyName::new(
+            "Conveyor",
+            "CN=Hydraulic Software AG, O=Hydraulic Software AG, L=Zürich, S=Zürich, C=CH, SERIALNUMBER=CHE-312.597.948, OID.1.3.6.1.4.1.311.60.2.1.2=Zürich, OID.1.3.6.1.4.1.311.60.2.1.3=CH, OID.2.5.4.15=Private Organization",
+        );
+
+        assert_eq!(package_family_name.to_string(), "Conveyor_fg3qp2cw01ypp");
     }
 
     #[test]
-    fn test_different_publishers() {
-        let publisher_id1 = PackageFamilyName::get_id("Publisher Software");
-        let publisher_id2 = PackageFamilyName::get_id("Another Publisher");
-        assert_ne!(publisher_id1, publisher_id2);
+    fn hydraulic_conveyor_16() {
+        let package_family_name = PackageFamilyName::new(
+            "Conveyor",
+            "CN=Hydraulic Software AG, O=Hydraulic Software AG, L=Zürich, S=Zürich, C=CH, SERIALNUMBER=CHE-312.597.948, OID.2.5.4.15=Private Organization, OID.1.3.6.1.4.1.311.60.2.1.2=Zürich, OID.1.3.6.1.4.1.311.60.2.1.3=CH",
+        );
+
+        assert_eq!(package_family_name.to_string(), "Conveyor_r94jb655n6kcp");
+    }
+
+    #[test]
+    fn equality() {
+        let powershell_pfn_1 = "Microsoft.PowerShell_8wekyb3d8bbwe"
+            .parse::<PackageFamilyName>()
+            .unwrap();
+        let powershell_pfn_2 = "microsoft.powerShell_8WEKYB3D8BBWE"
+            .parse::<PackageFamilyName>()
+            .unwrap();
+
+        assert_eq!(powershell_pfn_1, powershell_pfn_1);
+        assert_eq!(powershell_pfn_1, powershell_pfn_2);
+        assert_ne!(
+            powershell_pfn_1,
+            "Conveyor_fg3qp2cw01ypp"
+                .parse::<PackageFamilyName>()
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn comparison() {
+        let powershell_pfn_1 = "Microsoft.PowerShell_8wekyb3d8bbwe"
+            .parse::<PackageFamilyName>()
+            .unwrap();
+        let powershell_pfn_2 = "microsoft.powerShell_8WEKYB3D8BBWE"
+            .parse::<PackageFamilyName>()
+            .unwrap();
+
+        assert_eq!(powershell_pfn_1.cmp(&powershell_pfn_1), Ordering::Equal);
+        assert_eq!(powershell_pfn_1.cmp(&powershell_pfn_2), Ordering::Equal);
+
+        let conveyor_pfn = "Conveyor_fg3qp2cw01ypp"
+            .parse::<PackageFamilyName>()
+            .unwrap();
+        assert_eq!(powershell_pfn_1.cmp(&conveyor_pfn), Ordering::Greater);
+        assert_eq!(conveyor_pfn.cmp(&powershell_pfn_1), Ordering::Less);
+    }
+
+    #[test]
+    fn hash() {
+        // If two keys are equal, their hashes must also be equal
+        // https://doc.rust-lang.org/std/hash/trait.Hash.html#hash-and-eq
+
+        let package_family_name_1 = "Microsoft.PowerShell_8wekyb3d8bbwe"
+            .parse::<PackageFamilyName>()
+            .unwrap();
+        let package_family_name_2 = "microsoft.powerShell_8WEKYB3D8BBWE"
+            .parse::<PackageFamilyName>()
+            .unwrap();
+        assert_eq!(package_family_name_1, package_family_name_2);
+
+        let state = foldhash::fast::RandomState::default();
+        let mut package_family_name_1_hasher = state.build_hasher();
+        package_family_name_1.hash(&mut package_family_name_1_hasher);
+
+        let mut package_family_name_2_hasher = state.build_hasher();
+        package_family_name_2.hash(&mut package_family_name_2_hasher);
+
+        assert_eq!(
+            package_family_name_1_hasher.finish(),
+            package_family_name_2_hasher.finish()
+        );
     }
 }

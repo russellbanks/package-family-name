@@ -1,10 +1,10 @@
-use crate::PackageFamilyName;
-use crate::publisher_id::PublisherId;
-use alloc::borrow::ToOwned;
 use alloc::string::ToString;
+
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-impl Serialize for PackageFamilyName {
+use super::{PackageFamilyName, PublisherId};
+
+impl Serialize for PackageFamilyName<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -13,23 +13,16 @@ impl Serialize for PackageFamilyName {
     }
 }
 
-impl<'de> Deserialize<'de> for PackageFamilyName {
+impl<'de> Deserialize<'de> for PackageFamilyName<'de> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let deserialized_name = <&str>::deserialize(deserializer)?;
-        let (identity_name, identity_id) =
-            deserialized_name
-                .split_once('_')
-                .ok_or(serde::de::Error::custom(
-                    "Invalid format for PackageFamilyName",
-                ))?;
-        let publisher_id = identity_id.parse().map_err(serde::de::Error::custom)?;
-        Ok(PackageFamilyName {
-            identity_name: identity_name.to_owned(),
-            publisher_id,
-        })
+        let deserialized_package_family_name = <&str>::deserialize(deserializer)?;
+
+        deserialized_package_family_name
+            .parse()
+            .map_err(serde::de::Error::custom)
     }
 }
 
@@ -38,7 +31,7 @@ impl Serialize for PublisherId {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&self.0)
+        serializer.serialize_str(self.as_str())
     }
 }
 
