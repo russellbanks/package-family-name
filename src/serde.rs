@@ -13,7 +13,7 @@ impl Serialize for PackageFamilyName<'_> {
     }
 }
 
-impl<'de> Deserialize<'de> for PackageFamilyName<'de> {
+impl<'de, 'ident> Deserialize<'de> for PackageFamilyName<'ident> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
