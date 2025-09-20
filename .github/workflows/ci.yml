@@ -15,42 +15,53 @@ jobs:
         channel: [ stable, beta, nightly ]
 
     steps:
-      - name: Clone repository
+      - name: Checkout repository
         uses: actions/checkout@v5
 
       - name: Install Rust ${{ matrix.channel }}
-        uses: moonrepo/setup-rust@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          bins: cargo-hack
-          channel: ${{ matrix.channel }}
+          toolchain: ${{ matrix.channel }}
 
-      - name: Test powerset
-        run: cargo hack test --feature-powerset --optional-deps
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache-bin: false
+
+      - name: Install cargo-hack
+        uses: taiki-e/install-action@cargo-hack
+
+      - name: Check powerset
+        run: cargo hack check --feature-powerset --optional-deps
+
+      - name: Run tests
+        run: cargo test --all-features
 
   publish_dry_run:
     name: Publish dry run
     runs-on: ubuntu-latest
+    container: rust:alpine
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Install Rust
-        uses: moonrepo/setup-rust@v1
-
       - name: Publish dry run
-        run: cargo publish --dry-run
+        run: cargo publish --dry-run --no-verify
 
   msrv:
     name: MSRV
     runs-on: ubuntu-latest
+    container: foresterre/cargo-msrv
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Install cargo-msrv
-        uses: moonrepo/setup-rust@v1
+      - uses: Swatinem/rust-cache@v2
         with:
-          bins: cargo-msrv
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache-bin: false
 
       - name: Verify MSRV
         id: verify
@@ -63,29 +74,32 @@ jobs:
   unused_dependencies:
     name: Unused dependencies
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Install cargo-machete
-        uses: moonrepo/setup-rust@v1
-        with:
-          bins: cargo-machete
-
       - name: Check for unused dependencies
-        run: cargo machete
+        uses: bnjbvr/cargo-machete@main
 
   minimal_versions:
     name: Minimal dependency versions
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Install cargo-minimal-versions
-        uses: moonrepo/setup-rust@v1
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
         with:
-          bins: cargo-hack, cargo-minimal-versions
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-hack,cargo-minimal-versions
 
       - name: Add nightly Rust toolchain
         run: rustup toolchain add nightly --profile minimal --no-self-update
