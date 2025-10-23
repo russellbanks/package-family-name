@@ -52,7 +52,6 @@ jobs:
   msrv:
     name: MSRV
     runs-on: ubuntu-latest
-    container: foresterre/cargo-msrv
 
     steps:
       - name: Checkout repository
@@ -62,6 +61,11 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
           cache-bin: false
+
+      - name: Install cargo-msrv
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-msrv
 
       - name: Verify MSRV
         id: verify
