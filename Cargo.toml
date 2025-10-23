@@ -22,3 +22,4 @@ serde = ["dep:serde_core"]
 
 [dev-dependencies]
 foldhash = { version = "0.2", default-features = false }
+serde_json = { version = "1", default-features = false, features = ["alloc"] }

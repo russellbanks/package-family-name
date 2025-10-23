@@ -44,3 +44,35 @@ impl<'de> Deserialize<'de> for PublisherId {
         deserialized_id.parse().map_err(Error::custom)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::PackageFamilyName;
+
+    #[test]
+    fn serialize() {
+        let package_family_name = PackageFamilyName::new(
+            "Microsoft.Windows.Photos",
+            "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+        );
+
+        assert_eq!(
+            serde_json::to_string(&package_family_name).unwrap(),
+            r#""Microsoft.Windows.Photos_8wekyb3d8bbwe""#
+        )
+    }
+
+    #[test]
+    fn deserialize() {
+        let package_family_name = PackageFamilyName::new(
+            "Microsoft.Windows.Photos",
+            "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+        );
+        let json = r#""Microsoft.Windows.Photos_8wekyb3d8bbwe""#;
+
+        assert_eq!(
+            serde_json::from_str::<PackageFamilyName>(json).unwrap(),
+            package_family_name
+        );
+    }
+}
