@@ -3,6 +3,7 @@ name: Security audit
 on:
   push:
     paths:
+      - '.github/workflows/audit.yml'
       - '**/Cargo.toml'
 
 jobs:
@@ -12,6 +13,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Generate lockfile
+        run: cargo generate-lockfile
 
       - uses: rustsec/audit-check@v2
         with:
