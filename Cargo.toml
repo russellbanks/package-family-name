@@ -13,12 +13,12 @@ repository = "https://github.com/russellbanks/package-family-name"
 [dependencies]
 fast32 = { version = "1.0.1", default-features = false }
 heapless = { version = "0.9", default-features = false }
-serde = { version = "1", default-features = false, optional = true }
+serde_core = { version = "1", default-features = false, optional = true }
 sha2 = { version = "0.10", default-features = false }
 thiserror = { version = "2", default-features = false }
 
 [features]
-serde = ["dep:serde"]
+serde = ["dep:serde_core"]
 
 [dev-dependencies]
 foldhash = { version = "0.2", default-features = false }

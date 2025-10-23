@@ -1,6 +1,6 @@
 use alloc::string::ToString;
 
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_core::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
 
 use super::{PackageFamilyName, PublisherId};
 
@@ -22,7 +22,7 @@ impl<'de, 'ident> Deserialize<'de> for PackageFamilyName<'ident> {
 
         deserialized_package_family_name
             .parse()
-            .map_err(serde::de::Error::custom)
+            .map_err(Error::custom)
     }
 }
 
@@ -41,6 +41,6 @@ impl<'de> Deserialize<'de> for PublisherId {
         D: Deserializer<'de>,
     {
         let deserialized_id = <&str>::deserialize(deserializer)?;
-        deserialized_id.parse().map_err(serde::de::Error::custom)
+        deserialized_id.parse().map_err(Error::custom)
     }
 }
