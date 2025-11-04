@@ -1,6 +1,6 @@
 name: CI
 
-on: [ push, pull_request ]
+on: [push, pull_request]
 
 env:
   CARGO_TERM_COLOR: always
@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        channel: [ stable, beta, nightly ]
+        channel: [stable, beta, nightly]
 
     steps:
       - name: Checkout repository
@@ -35,7 +35,7 @@ jobs:
         run: cargo hack check --feature-powerset --optional-deps
 
       - name: Run tests
-        run: cargo test --all-features
+        run: cargo hack test --feature-powerset --optional-deps
 
   publish_dry_run:
     name: Publish dry run
