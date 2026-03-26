@@ -14,7 +14,7 @@ repository = "https://github.com/russellbanks/package-family-name"
 fast32 = { version = "1.0.1", default-features = false }
 heapless = { version = "0.9", default-features = false }
 serde_core = { version = "1", default-features = false, optional = true }
-sha2 = { version = "0.10", default-features = false }
+sha2 = { version = "0.11", default-features = false }
 thiserror = { version = "2", default-features = false }
 
 [features]
