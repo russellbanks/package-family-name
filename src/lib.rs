@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 /*!
 Package Family Name is a Rust crate for calculating MSIX Package Family Name values.
 
