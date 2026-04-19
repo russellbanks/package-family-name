@@ -255,10 +255,7 @@ impl FromStr for PackageFamilyName<'_> {
 #[cfg(test)]
 mod tests {
     use alloc::string::ToString;
-    use core::{
-        cmp::Ordering,
-        hash::{BuildHasher, Hash, Hasher},
-    };
+    use core::cmp::Ordering;
 
     use super::PackageFamilyName;
 
@@ -335,6 +332,10 @@ mod tests {
 
     #[test]
     fn hash() {
+        use core::hash::BuildHasher;
+
+        use rustc_hash::FxBuildHasher;
+
         // If two keys are equal, their hashes must also be equal
         // https://doc.rust-lang.org/std/hash/trait.Hash.html#hash-and-eq
 
@@ -346,16 +347,9 @@ mod tests {
             .unwrap();
         assert_eq!(package_family_name_1, package_family_name_2);
 
-        let state = foldhash::fast::RandomState::default();
-        let mut package_family_name_1_hasher = state.build_hasher();
-        package_family_name_1.hash(&mut package_family_name_1_hasher);
-
-        let mut package_family_name_2_hasher = state.build_hasher();
-        package_family_name_2.hash(&mut package_family_name_2_hasher);
-
         assert_eq!(
-            package_family_name_1_hasher.finish(),
-            package_family_name_2_hasher.finish()
+            FxBuildHasher.hash_one(package_family_name_1),
+            FxBuildHasher.hash_one(package_family_name_2)
         );
     }
 }

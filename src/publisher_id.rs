@@ -210,10 +210,7 @@ impl FromStr for PublisherId {
 
 #[cfg(test)]
 mod tests {
-    use core::{
-        cmp::Ordering,
-        hash::{BuildHasher, Hash, Hasher},
-    };
+    use core::cmp::Ordering;
 
     use super::{PublisherId, PublisherIdError};
 
@@ -298,6 +295,10 @@ mod tests {
 
     #[test]
     fn hash() {
+        use core::hash::BuildHasher;
+
+        use rustc_hash::FxBuildHasher;
+
         // If two keys are equal, their hashes must also be equal
         // https://doc.rust-lang.org/std/hash/trait.Hash.html#hash-and-eq
 
@@ -305,13 +306,9 @@ mod tests {
         let upper_id = "ZJ75K085CMJ1A".parse::<PublisherId>().unwrap();
         assert_eq!(lower_id, upper_id);
 
-        let state = foldhash::fast::RandomState::default();
-        let mut id_1_hasher = state.build_hasher();
-        lower_id.hash(&mut id_1_hasher);
-
-        let mut id_2_hasher = state.build_hasher();
-        upper_id.hash(&mut id_2_hasher);
-
-        assert_eq!(id_1_hasher.finish(), id_2_hasher.finish());
+        assert_eq!(
+            FxBuildHasher.hash_one(lower_id),
+            FxBuildHasher.hash_one(upper_id)
+        );
     }
 }
