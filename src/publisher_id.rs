@@ -48,8 +48,8 @@ impl PublisherId {
         let truncated_hash = &publisher_sha_256[..HASH_TRUNCATION_LENGTH];
         let crockford_encoded = CROCKFORD_LOWER.encode(truncated_hash);
 
-        crockford_encoded
-            .parse()
+        String::from_str(&crockford_encoded)
+            .map(Self)
             .unwrap_or_else(|_| unreachable!("An 8-byte array encoded with Crockford Base32 should always have an expected length of 13"))
     }
 
