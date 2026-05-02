@@ -4,7 +4,7 @@ use serde_core::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
 
 use super::{PackageFamilyName, PublisherId};
 
-impl Serialize for PackageFamilyName<'_> {
+impl Serialize for PackageFamilyName {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -13,7 +13,7 @@ impl Serialize for PackageFamilyName<'_> {
     }
 }
 
-impl<'de, 'ident> Deserialize<'de> for PackageFamilyName<'ident> {
+impl<'de> Deserialize<'de> for PackageFamilyName {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,

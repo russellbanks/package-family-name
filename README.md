@@ -6,7 +6,7 @@ A Rust library for calculating MSIX Package Family Name values.
 
 This is a `#![no_std]` library.
 
-Every MSIX application has a package family name value, which looks a bit like `AppName_zj75k085cmj1a`. This value can
+Every MSIX application has a package family name value, which looks a bit like `AppName_26gmypax28ghe`. This value can
 easily be found by running `Get-AppxPackage <name>` in PowerShell for an installed MSIX package and scrolling to
 `PackageFullName`.
 
@@ -19,11 +19,11 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-package-family-name = "2"
+package-family-name = "3"
 ```
 
 ```rust
-let package_family_name = PackageFamilyName::new("AppName", "Publisher Software"); // AppName_zj75k085cmj1a
+let package_family_name = PackageFamilyName::new("AppName", "CN=, O=, L=, S=, C="); // AppName_26gmypax28ghe
 ```
 
 ## How a package family name is calculated

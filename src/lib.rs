@@ -1,10 +1,8 @@
-#![forbid(unsafe_code)]
-
 /*!
 Package Family Name is a Rust crate for calculating MSIX Package Family Name values.
 
 Every MSIX application has a package family name value, which looks a bit like
-`AppName_zj75k085cmj1a`. This value can easily be found by running `Get-AppxPackage <name>` in
+`AppName_26gmypax28ghe`. This value can easily be found by running `Get-AppxPackage <name>` in
 PowerShell for an installed MSIX package and scrolling to `PackageFullName`.
 
 However, we can work out a package family name value without needing to install the package at all.
@@ -16,7 +14,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-package-family-name = "2"
+package-family-name = "3"
 ```
 
 ```
@@ -59,14 +57,14 @@ This post can be found
 */
 
 #![doc(html_root_url = "https://docs.rs/package-family-name")]
-#![forbid(unsafe_code)]
 #![no_std]
 
 extern crate alloc;
 
+mod crockford;
 mod publisher_id;
 
-use alloc::borrow::{Cow, ToOwned};
+use alloc::{borrow::ToOwned, boxed::Box};
 use core::{
     cmp::Ordering,
     fmt,
@@ -91,14 +89,14 @@ mod serde;
 ///
 /// Package Family Name is often referred to as a 'version-less Package Full Name'.
 ///
-/// [Package Family Name]: https://learn.microsoft.com/en-us/windows/apps/desktop/modernize/package-identity-overview#package-family-name
+/// [Package Family Name]: https://learn.microsoft.com/windows/apps/desktop/modernize/package-identity-overview#package-family-name
 #[derive(Clone, Debug, Default, Eq)]
-pub struct PackageFamilyName<'ident> {
-    package_name: Cow<'ident, str>,
+pub struct PackageFamilyName {
+    package_name: Box<str>,
     publisher_id: PublisherId,
 }
 
-impl<'ident> PackageFamilyName<'ident> {
+impl PackageFamilyName {
     /// Creates a new Package Family Name from a package name and an identity publisher.
     ///
     /// This is equivalent to the Windows function [`PackageNameAndPublisherIdFromFamilyName`].
@@ -117,14 +115,10 @@ impl<'ident> PackageFamilyName<'ident> {
     ///
     /// [`PackageNameAndPublisherIdFromFamilyName`]: https://learn.microsoft.com/en-us/windows/win32/api/appmodel/nf-appmodel-packagenameandpublisheridfromfamilyname
     #[must_use]
-    pub fn new<T, S>(package_name: T, identity_publisher: S) -> Self
-    where
-        T: Into<Cow<'ident, str>>,
-        S: AsRef<str>,
-    {
+    pub fn new(package_name: &str, publisher: &str) -> Self {
         Self {
             package_name: package_name.into(),
-            publisher_id: PublisherId::new(identity_publisher),
+            publisher_id: PublisherId::new(publisher),
         }
     }
 
@@ -169,13 +163,13 @@ impl<'ident> PackageFamilyName<'ident> {
     }
 }
 
-impl fmt::Display for PackageFamilyName<'_> {
+impl fmt::Display for PackageFamilyName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}_{}", self.package_name, self.publisher_id)
     }
 }
 
-impl PartialEq for PackageFamilyName<'_> {
+impl PartialEq for PackageFamilyName {
     /// Tests for `self` and `other` values to be equal, and is used by `==`.
     ///
     /// Package Family Name is compared case-insensitively.
@@ -192,17 +186,17 @@ impl PartialEq for PackageFamilyName<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.package_name()
             .eq_ignore_ascii_case(other.package_name())
-            && self.publisher_id().eq(other.publisher_id())
+            && self.publisher_id() == other.publisher_id()
     }
 }
 
-impl PartialOrd for PackageFamilyName<'_> {
+impl PartialOrd for PackageFamilyName {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for PackageFamilyName<'_> {
+impl Ord for PackageFamilyName {
     fn cmp(&self, other: &Self) -> Ordering {
         self.package_name()
             .as_bytes()
@@ -219,7 +213,7 @@ impl Ord for PackageFamilyName<'_> {
     }
 }
 
-impl Hash for PackageFamilyName<'_> {
+impl Hash for PackageFamilyName {
     fn hash<H: Hasher>(&self, state: &mut H) {
         for byte in self.package_name().as_bytes() {
             state.write_u8(byte.to_ascii_lowercase());
@@ -239,7 +233,7 @@ pub enum PackageFamilyNameError {
     PublisherId(#[from] PublisherIdError),
 }
 
-impl FromStr for PackageFamilyName<'_> {
+impl FromStr for PackageFamilyName {
     type Err = PackageFamilyNameError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -351,5 +345,15 @@ mod tests {
             FxBuildHasher.hash_one(package_family_name_1),
             FxBuildHasher.hash_one(package_family_name_2)
         );
+    }
+
+    #[test]
+    fn size() {
+        assert_eq!(size_of::<PackageFamilyName>(), 32);
+    }
+
+    #[test]
+    fn alignment() {
+        assert_eq!(align_of::<PackageFamilyName>(), 8);
     }
 }

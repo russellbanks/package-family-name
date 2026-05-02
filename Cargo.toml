@@ -1,6 +1,6 @@
 [package]
 name = "package-family-name"
-version = "2.1.2"
+version = "3.0.0"
 edition = "2024"
 rust-version = "1.87"
 license = "MIT OR Apache-2.0"
@@ -11,8 +11,6 @@ readme = "README.md"
 repository = "https://github.com/russellbanks/package-family-name"
 
 [dependencies]
-fast32 = { version = "1.0.1", default-features = false }
-heapless = { version = "0.9", default-features = false }
 serde_core = { version = "1", default-features = false, optional = true }
 sha2 = { version = "0.11", default-features = false }
 thiserror = { version = "2", default-features = false }

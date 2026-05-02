@@ -2,26 +2,28 @@ use core::{
     char,
     cmp::Ordering,
     fmt,
-    fmt::{Debug, Display, Formatter},
+    fmt::{Debug, Formatter},
     hash::{Hash, Hasher},
     str::FromStr,
 };
 
-use fast32::base32::CROCKFORD_LOWER;
-use heapless::String;
 use sha2::{Digest, Sha256};
 use thiserror::Error;
 
-const CROCKFORD_OMITTED_CHARACTERS: [char; 4] = ['i', 'l', 'o', 'u'];
+use super::crockford;
 
 /// A Crockford Base32 encoded 13-character long [Publisher Id] derived from a Publisher.
 ///
+///
 /// [Publisher Id]: https://learn.microsoft.com/windows/apps/desktop/modernize/package-identity-overview#publisher-id
 #[derive(Clone, Debug, Eq)]
-pub struct PublisherId(String<{ PublisherId::LENGTH }>);
+#[repr(transparent)]
+pub struct PublisherId([u8; Self::LENGTH]);
 
 impl PublisherId {
-    /// The constant length of a Publisher Id.
+    /// The constant length of a [Publisher Id].
+    ///
+    /// [Publisher Id]: PublisherId
     ///
     /// # Examples
     ///
@@ -31,26 +33,22 @@ impl PublisherId {
     /// ```
     pub const LENGTH: usize = 13;
 
+    /// Creates a new [Publisher Id] from an publisher
+    ///
+    /// [Publisher Id]: PublisherId
     #[must_use]
-    pub fn new<S>(identity_publisher: S) -> Self
-    where
-        S: AsRef<str>,
-    {
-        const HASH_TRUNCATION_LENGTH: usize = 8;
-
-        let publisher_sha_256 = identity_publisher
-            .as_ref()
+    pub fn new(publisher: &str) -> Self {
+        // SHA-256 hash the UTF-16LE-encoded publisher
+        let publisher_sha_256 = publisher
             .encode_utf16()
             .map(u16::to_le_bytes)
             .fold(Sha256::new(), Sha256::chain_update)
             .finalize();
 
-        let truncated_hash = &publisher_sha_256[..HASH_TRUNCATION_LENGTH];
-        let crockford_encoded = CROCKFORD_LOWER.encode(truncated_hash);
+        // Crockford Base32 encode the first 8 bytes of the SHA-256 hash
+        let crockford_encoded = crockford::encode_lower(publisher_sha_256[..8].try_into().unwrap());
 
-        String::from_str(&crockford_encoded)
-            .map(Self)
-            .unwrap_or_else(|_| unreachable!("An 8-byte array encoded with Crockford Base32 should always have an expected length of 13"))
+        Self(crockford_encoded)
     }
 
     /// Extracts a string slice containing the entire Publisher Id.
@@ -65,16 +63,12 @@ impl PublisherId {
     /// ```
     #[must_use]
     #[inline]
-    pub fn as_str(&self) -> &str {
-        self.0.as_str()
+    pub const fn as_str(&self) -> &str {
+        // SAFETY: Inner bytes are Crockford Base32 characters and are therefore always valid UTF-8
+        unsafe { str::from_utf8_unchecked(&self.0) }
     }
 
-    /// Returns the length of `self`.
-    ///
-    /// This will always be equal to 13.
-    ///
-    /// This length is in bytes, not [`prim@char`]s or graphemes. In other words, it might not be
-    /// what a human considers the length of the string.
+    /// Returns a byte slice of this `PublisherId`'s contents.
     ///
     /// # Examples
     ///
@@ -82,50 +76,38 @@ impl PublisherId {
     /// # use package_family_name::PublisherId;
     /// let publisher_id = PublisherId::new("CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US");
     ///
-    /// assert_eq!(publisher_id.len(), 13);
-    /// ```
+    /// assert_eq!(publisher_id.as_bytes(), b"8wekyb3d8bbwe");
     #[must_use]
     #[inline]
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    /// Returns `true` if `self` has a length of zero bytes.
-    ///
-    /// This will always be false.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use package_family_name::PublisherId;
-    /// let publisher_id = PublisherId::new("CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US");
-    ///
-    /// assert_eq!(publisher_id.is_empty(), false);
-    /// ```
-    #[must_use]
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+    pub const fn as_bytes(&self) -> &[u8] {
+        &self.0
     }
 }
 
 impl AsRef<str> for PublisherId {
     #[inline]
     fn as_ref(&self) -> &str {
-        self.0.as_ref()
+        self.as_str()
+    }
+}
+
+impl AsRef<[u8]> for PublisherId {
+    #[inline]
+    fn as_ref(&self) -> &[u8] {
+        self.as_bytes()
     }
 }
 
 impl Default for PublisherId {
     fn default() -> Self {
         // This isn't an ideal default but ensures that it will still have a fixed length of 13
-        Self(core::iter::repeat_n('0', Self::LENGTH).collect::<_>())
+        Self([b'0'; Self::LENGTH])
     }
 }
 
-impl Display for PublisherId {
+impl fmt::Display for PublisherId {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.as_str(), f)
+        fmt::Display::fmt(self.as_str(), f)
     }
 }
 
@@ -160,16 +142,15 @@ impl PartialOrd for PublisherId {
 impl Ord for PublisherId {
     fn cmp(&self, other: &Self) -> Ordering {
         self.0
-            .as_bytes()
             .iter()
             .map(u8::to_ascii_lowercase)
-            .cmp(other.0.as_bytes().iter().map(u8::to_ascii_lowercase))
+            .cmp(other.0.iter().map(u8::to_ascii_lowercase))
     }
 }
 
 impl Hash for PublisherId {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        for byte in self.0.as_bytes() {
+        for byte in self.as_bytes() {
             state.write_u8(byte.to_ascii_lowercase());
         }
     }
@@ -190,6 +171,12 @@ impl FromStr for PublisherId {
     type Err = PublisherIdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        const CROCKFORD_OMITTED_CHARACTERS: [char; 4] = ['i', 'l', 'o', 'u'];
+
+        if s.len() != Self::LENGTH {
+            return Err(PublisherIdError::InvalidLength);
+        }
+
         if s.chars().any(|char| {
             !char.is_ascii_alphanumeric()
                 || CROCKFORD_OMITTED_CHARACTERS.contains(&char.to_ascii_lowercase())
@@ -197,21 +184,28 @@ impl FromStr for PublisherId {
             return Err(PublisherIdError::InvalidCharacters);
         }
 
-        if s.len() != Self::LENGTH {
-            // We can check byte length because at this point we know the string is ASCII
-            return Err(PublisherIdError::InvalidLength);
+        Ok(Self(s.as_bytes().try_into().unwrap()))
+    }
+}
+
+impl TryFrom<[u8; 13]> for PublisherId {
+    type Error = PublisherIdError;
+
+    fn try_from(value: [u8; 13]) -> Result<Self, Self::Error> {
+        const CROCKFORD_OMITTED_CHARACTERS: [u8; 4] = [b'i', b'l', b'o', b'u'];
+
+        if value.iter().any(|byte| {
+            !byte.is_ascii_alphanumeric() || CROCKFORD_OMITTED_CHARACTERS.contains(byte)
+        }) {
+            return Err(PublisherIdError::InvalidCharacters);
         }
 
-        Ok(Self(
-            s.parse().map_err(|_| PublisherIdError::InvalidLength)?,
-        ))
+        Ok(Self(value))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use core::cmp::Ordering;
-
     use super::{PublisherId, PublisherIdError};
 
     #[test]
@@ -276,16 +270,24 @@ mod tests {
         let upper_id = "ZJ75K085CMJ1A".parse::<PublisherId>().unwrap();
 
         assert_eq!(lower_id, lower_id);
+
+        // Case-insensitive equality
         assert_eq!(lower_id, upper_id);
+
+        // Inequality
         assert_ne!(lower_id, "yjp7t9tn9g0z0".parse::<PublisherId>().unwrap());
     }
 
     #[test]
-    fn comparison() {
+    fn ordering() {
+        use core::cmp::Ordering;
+
         let lower_id = "zj75k085cmj1a".parse::<PublisherId>().unwrap();
         let upper_id = "ZJ75K085CMJ1A".parse::<PublisherId>().unwrap();
 
         assert_eq!(lower_id.cmp(&lower_id), Ordering::Equal);
+
+        // Case-insensitive equality
         assert_eq!(lower_id.cmp(&upper_id), Ordering::Equal);
 
         let other_id = "yjp7t9tn9g0z0".parse::<PublisherId>().unwrap();
@@ -310,5 +312,15 @@ mod tests {
             FxBuildHasher.hash_one(lower_id),
             FxBuildHasher.hash_one(upper_id)
         );
+    }
+
+    #[test]
+    fn size() {
+        assert_eq!(size_of::<PublisherId>(), PublisherId::LENGTH);
+    }
+
+    #[test]
+    fn alignment() {
+        assert_eq!(align_of::<PublisherId>(), 1);
     }
 }
