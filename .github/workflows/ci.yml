@@ -1,6 +1,6 @@
 name: CI
 
-on: [push, pull_request]
+on: [ push, pull_request ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        channel: [stable, beta, nightly]
+        channel: [ stable, beta, nightly ]
 
     steps:
       - name: Checkout repository
@@ -110,3 +110,21 @@ jobs:
 
       - name: Check minimal versions
         run: cargo minimal-versions check
+
+  miri:
+    name: Miri
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Miri
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: miri
+
+      - name: Setup Miri
+        run: cargo miri setup
+
+      - name: Test with Miri
+        run: cargo miri test
